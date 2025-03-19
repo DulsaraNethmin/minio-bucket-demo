@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MinIO Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>MinIO Upload Test</h1>
+    
+    <div class="form-group">
+        <label for="fileInput">Select a file:</label>
+        <input type="file" id="fileInput">
+    </div>
+    
+    <button id="uploadButton">Upload</button>
+    
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadButton').addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileInput');
+            const resultDiv = document.getElementById('resultDiv');
+            
+            if (!fileInput.files.length) {
+                alert('Please select a file first');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            
+            try {
+                // Step 1: Get presigned URL
+                const response = await fetch('http://localhost:5005/api/generate-presigned-url', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        file: file.name,
+                    }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to get presigned URL');
+                }
+                
+                const { uploadUrl, downloadUrl } = await response.json();
+                console.log('Upload URL:', uploadUrl);
+                console.log('Download URL:', downloadUrl);
+                
+                // Step 2: Upload file using presigned URL
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    body: file,
+                    headers: {
+                        'Content-Type': file.type,
+                    },
+                });
+                
+                if (!uploadResponse.ok) {
+                    throw new Error('Failed to upload file');
+                }
+                
+                // Display success message and download link
+                document.getElementById('result').innerHTML = `
+                    <p>File uploaded successfully!</p>
+                    <p>You can download it at: <a href="${downloadUrl}" target="_blank">${downloadUrl}</a></p>
+                `;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
